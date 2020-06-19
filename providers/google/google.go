@@ -2,17 +2,19 @@ package google
 
 import (
 	"encoding/json"
-	"github.com/syssam/socialite/providers"
+	"fmt"
 	"net/http"
+
+	"github.com/syssam/socialite/providers"
 )
 
-var scopeSeparator = " ";
+var scopeSeparator = " "
 
 var scopes = []string{
 	"openid",
 	"profile",
 	"email",
-};
+}
 
 type googleProvider struct {
 	providers.Provider
@@ -35,7 +37,7 @@ func (p googleProvider) GetAuthUrl(state string) string {
 }
 
 func (p googleProvider) GetTokenUrl() string {
-	return "https://www.googleapis.com/oauth2/v4/token";
+	return "https://www.googleapis.com/oauth2/v4/token"
 }
 
 func (p googleProvider) GetAccessTokenResponse(code string) (map[string]string, error) {
@@ -50,36 +52,64 @@ func (p googleProvider) GetTokenFields(code string) map[string]string {
 
 func (p googleProvider) GetUserByToken(token string) (*providers.User, error) {
 	req, err := http.NewRequest("GET", "https://www.googleapis.com/oauth2/v3/userinfo", nil)
-	if(err != nil) {
-		return nil, err
+	if err != nil {
+		return nil, fmt.Errorf("http.NewRequest(): %v", err)
 	}
 
-    query := req.URL.Query()
-    query.Add("prettyPrint", "false")
-    req.URL.RawQuery = query.Encode()
+	query := req.URL.Query()
+	query.Add("prettyPrint", "false")
+	req.URL.RawQuery = query.Encode()
 
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer " + token)
+	req.Header.Add("Authorization", "Bearer "+token)
 
-    resp, err := p.Client.Do(req)
+	resp, err := p.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
 	defer resp.Body.Close()
 
-    jsonMap := map[string]string{}
-	err = json.NewDecoder(resp.Body).Decode(&jsonMap)
-    if err != nil {
-		return nil, err
-    }
+	if resp.StatusCode != 200 {
+		responseError := &responseError{}
+		err = json.NewDecoder(resp.Body).Decode(responseError)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf(responseError.ErrorDescription)
+	}
 
-    return &providers.User{
-		ID:             jsonMap["sub"],
-		NickName:       jsonMap["nickname"],
-		Name:           jsonMap["name"],
-		Email:          jsonMap["email"],
-		Avatar:         jsonMap["picture"],
-		AvatarOriginal: jsonMap["picture"],
+	// body, _ := ioutil.ReadAll(resp.Body)
+	// fmt.Println(body)
+
+	profile := &profile{}
+	err = json.NewDecoder(resp.Body).Decode(profile)
+	if err != nil {
+		return nil, err
+	}
+
+	return &providers.User{
+		ID:             profile.Sub,
+		NickName:       profile.Name,
+		Name:           profile.Name,
+		Email:          profile.Email,
+		Avatar:         profile.Picture,
+		AvatarOriginal: profile.Picture,
 	}, nil
+}
+
+type profile struct {
+	Sub           string
+	Name          string
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Picture       string
+	Email         string
+	EmailVerified bool `json:"email_verified"`
+	Locale        string
+}
+
+type responseError struct {
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
 }
