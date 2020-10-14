@@ -79,9 +79,6 @@ func (p googleProvider) GetUserByToken(token string) (*providers.User, error) {
 		return nil, fmt.Errorf(responseError.ErrorDescription)
 	}
 
-	// body, _ := ioutil.ReadAll(resp.Body)
-	// fmt.Println(body)
-
 	profile := &profile{}
 	err = json.NewDecoder(resp.Body).Decode(profile)
 	if err != nil {
