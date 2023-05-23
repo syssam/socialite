@@ -42,7 +42,7 @@ func (p facebookProvider) GetTokenUrl() string {
 	return p.graphURL + "/" + p.version + "/oauth/access_token"
 }
 
-func (p facebookProvider) GetAccessTokenResponse(code string) (map[string]string, error) {
+func (p facebookProvider) GetAccessTokenResponse(code string) (map[string]interface{}, error) {
 	return p.Provider.GetAccessTokenResponse(code, p)
 }
 

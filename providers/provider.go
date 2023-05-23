@@ -3,7 +3,6 @@ package providers
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -51,7 +50,7 @@ func (p Provider) UserFromToken() string {
 	return ""
 }
 
-func (p Provider) GetAccessTokenResponse(code string, provider providerInterface) (map[string]string, error) {
+func (p Provider) GetAccessTokenResponse(code string, provider providerInterface) (map[string]interface{}, error) {
 	data := url.Values{}
 	fields := provider.GetTokenFields(code)
 	for k, v := range fields {
@@ -65,21 +64,32 @@ func (p Provider) GetAccessTokenResponse(code string, provider providerInterface
 	}
 
 	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := p.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	content, err := ioutil.ReadAll(resp.Body)
+
+	/*
+		content, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+	*/
+
+	jsonMap := make(map[string]interface{})
+	err = json.NewDecoder(resp.Body).Decode(&jsonMap)
 	if err != nil {
 		return nil, err
 	}
 
-	jsonMap := map[string]string{}
-	err = json.NewDecoder(resp.Body).Decode(&jsonMap)
-	if err != nil {
-		fmt.Println(string(content))
-		return nil, err
+	if val, ok := jsonMap["error_description"]; ok {
+		return nil, fmt.Errorf(val.(string))
+	}
+
+	if val, ok := jsonMap["error"]; ok {
+		return nil, fmt.Errorf(val.(string))
 	}
 
 	return jsonMap, nil

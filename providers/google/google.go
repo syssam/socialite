@@ -40,7 +40,7 @@ func (p googleProvider) GetTokenUrl() string {
 	return "https://www.googleapis.com/oauth2/v4/token"
 }
 
-func (p googleProvider) GetAccessTokenResponse(code string) (map[string]string, error) {
+func (p googleProvider) GetAccessTokenResponse(code string) (map[string]interface{}, error) {
 	return p.Provider.GetAccessTokenResponse(code, p)
 }
 
